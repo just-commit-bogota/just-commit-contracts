@@ -46,13 +46,12 @@ contract CommitManager {
   mapping(address => Commit[]) commitmentsToClaim; 
 
   // TODO: _also_ takes in "picture" and "wager"
-  function createCommit(string memory _message, address commitTo, uint256 expiryTimestamp, uint256 stakeAmount ) external payable {
-    require(msg.value == stakeAmount, "You must send the exact amount of ETH as the stake amount");
+  function createCommit(string memory _message, address commitTo, uint256 expiryTimestamp) external payable {
     require(commitTo != msg.sender, "Cannot commit to yourself");
 
 
     console.log("\n%s has commited with message: %s", msg.sender, _message);
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, expiryTimestamp, stakeAmount, _message, "", false);
+    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, expiryTimestamp, msg.value, _message, "", false);
     commits.push(newCommit);
     totalCommits += 1;
   }
@@ -60,7 +59,7 @@ contract CommitManager {
 
   // creator of a commitment can send a proof that they have completed the commitment
   // using an ipfs hash 
-  function updateCommit(uint256 commitId, string memory _proofIpfsHash) external {
+  function proveCommit(uint256 commitId, string memory _proofIpfsHash) external {
     Commit storage commit = commits[commitId];
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
     require(commit.commitApproved == false, "This commit has already been approved");
@@ -75,6 +74,7 @@ contract CommitManager {
     require(commit.commitTo == msg.sender, "You are not the recipient of this commit");
     require(commit.expiryTimestamp > block.timestamp, "Commit has expired");
     require(commit.commitApproved == false, "Commit has already been judged");
+    require(bytes(commit.proofIpfsHash).length != 0, "Proof must be submitted before you can judge!");
 
     commit.commitApproved = commitApproved;
     if (commitApproved) {
