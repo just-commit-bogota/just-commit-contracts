@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/montabogota/projects/just-commit-contracts/contracts/CommitPortal.sol": {
-      "lastModificationDate": 1665242079393,
-      "contentHash": "309cda41eef7bd21eafb16a5d92f7772",
+      "lastModificationDate": 1665243741994,
+      "contentHash": "522d340363dc01ca1466b4679aaea45f",
       "sourceName": "contracts/CommitPortal.sol",
       "solcConfig": {
         "version": "0.8.17",

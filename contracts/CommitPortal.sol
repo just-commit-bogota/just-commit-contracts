@@ -83,6 +83,16 @@ contract CommitManager {
     }
   }
 
+  function claimExpiredCommit(uint256 commitId) external {
+    Commit storage commit = commits[commitId];
+    require(commit.commitTo == msg.sender, "You are not the commitTo of this commit");
+    require(commit.commitApproved == false, "Commit has already been judged");
+    require(commit.expiryTimestamp < block.timestamp, "Commit has not expired yet");
+
+    // send the stake amount to the commitFrom
+    payable(commit.commitFrom).transfer(commit.stakeAmount);
+  }
+
   // a Getter for the Commit array
   function getAllCommits() public view returns (Commit[] memory) {
     return commits;
