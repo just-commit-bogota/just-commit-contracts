@@ -89,8 +89,8 @@ contract CommitManager {
     require(commit.commitApproved == false, "Commit has already been judged");
     require(commit.expiryTimestamp < block.timestamp, "Commit has not expired yet");
 
-    // send the stake amount to the commitFrom
-    payable(commit.commitFrom).transfer(commit.stakeAmount);
+    // send the stake amount to the commitTo
+    payable(commit.commitTo).transfer(commit.stakeAmount);
   }
 
   // a Getter for the Commit array
