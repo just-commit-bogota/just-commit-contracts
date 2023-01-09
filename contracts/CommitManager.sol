@@ -1,5 +1,3 @@
-CommitManager.sol
-
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
@@ -11,8 +9,6 @@ contract CommitManager {
   // variables
   Commit[] commits;
   uint256 totalCommits;
-  mapping(address => Commit[]) commitmentsToJudge; 
-  mapping(address => Commit[]) commitmentsToClaim; 
 
   // events
   event NewCommit(address indexed from, address indexed to, uint256 expiryTimestamp, uint256 stakeAmount, string commitMessage);
@@ -20,14 +16,14 @@ contract CommitManager {
 
   // "Commit" struct
   struct Commit {
-    uint256 id; // totalCommits is the proxy for now
+    uint256 id; // the totalCommits proxy (for now)
     address commitFrom;
     address commitTo;
     uint256 expiryTimestamp;
     uint256 stakeAmount; // currently only ETH supported
     string message;
     string proofIpfsHash;
-    bool commitApproved;
+    bool commitJudged; // change all commitApproved instances
   }
   constructor() {
     totalCommits = 0;
@@ -40,11 +36,11 @@ contract CommitManager {
   function createCommit(string memory _message, address commitTo, uint256 expiryTimestamp) external payable {
     require(msg.sender != commitTo, "Cannot commit to yourself");
 
-    console.log("\n%s has commited with message: %s", msg.sender, _message);
-
     Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, expiryTimestamp, msg.value, _message, "", false);
     commits.push(newCommit);
     totalCommits += 1;
+
+    console.log("\n%s has commited with message: %s", msg.sender, _message);
   }
 
   // prove a commit
@@ -63,7 +59,7 @@ contract CommitManager {
     require(commit.commitTo == msg.sender, "You are not the recipient of this commit");
     require(commit.expiryTimestamp > block.timestamp, "Commit has expired");
     require(commit.commitApproved == false, "Commit has already been judged");
-    require(bytes(commit.proofIpfsHash).length != 0, "Proof must be submitted before you can judge!");
+    require(bytes(commit.proofIpfsHash).length != 0, "Proof must be submitted before you can judge");
     
     commit.commitApproved = commitApproved;
     if (commitApproved) {
@@ -92,5 +88,4 @@ contract CommitManager {
   function getTotalCommits() public view returns (uint256) {
     return totalCommits;
   }
-
 }
