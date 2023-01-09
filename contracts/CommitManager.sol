@@ -1,3 +1,5 @@
+CommitManager.sol
+
 // SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
@@ -5,25 +7,20 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 
 contract CommitManager {
-  // global history of commits
+
+  // variables
   Commit[] commits;
-  // global counter for uniquely identifying commits
   uint256 totalCommits;
+  mapping(address => Commit[]) commitmentsToJudge; 
+  mapping(address => Commit[]) commitmentsToClaim; 
 
-  // a NewCommit takes in:
-  // address from 
-  // address to
-  // timestamp
-  // commitMessage
-  // TODO: an IPFS picture
+  // events
   event NewCommit(address indexed from, address indexed to, uint256 expiryTimestamp, uint256 stakeAmount, string commitMessage);
-
-
   event Claimed(address indexed from, uint256 amount);
 
   // "Commit" struct
   struct Commit {
-    uint256 id;
+    uint256 id; // totalCommits is the proxy for now
     address commitFrom;
     address commitTo;
     uint256 expiryTimestamp;
@@ -32,50 +29,42 @@ contract CommitManager {
     string proofIpfsHash;
     bool commitApproved;
   }
-
   constructor() {
     totalCommits = 0;
     console.log("CommitManager contract deployed");
   }
 
+  // functions (create -> prove -> judge, claim)
 
-  // two mappings: 
-  // one mapping which maps an address to the commitments they have been assigned to judge
-  // one mapping which maps an address to the commitments they have made
-  mapping(address => Commit[]) commitmentsToJudge; 
-  mapping(address => Commit[]) commitmentsToClaim; 
-
-  // TODO: _also_ takes in "picture" and "wager"
+  // create a commit
   function createCommit(string memory _message, address commitTo, uint256 expiryTimestamp) external payable {
-    require(commitTo != msg.sender, "Cannot commit to yourself");
-
+    require(msg.sender != commitTo, "Cannot commit to yourself");
 
     console.log("\n%s has commited with message: %s", msg.sender, _message);
+
     Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, expiryTimestamp, msg.value, _message, "", false);
     commits.push(newCommit);
     totalCommits += 1;
   }
 
-
-  // creator of a commitment can send a proof that they have completed the commitment
-  // using an ipfs hash 
+  // prove a commit
   function proveCommit(uint256 commitId, string memory _proofIpfsHash) external {
     Commit storage commit = commits[commitId];
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
-    require(commit.commitApproved == false, "This commit has already been approved");
+    require(commit.commitApproved == false, "This commit has already been proved");
     require(commit.expiryTimestamp > block.timestamp, "This commit has expired");
+
     commit.proofIpfsHash = _proofIpfsHash;
   }
 
-  // Recipient of a commit can approve the commit was completed successfully before the expiry date/time
-  // once approved the sender of the commit can claim the stake amount (at any time)
+  // judge a commit
   function judgeCommit(uint256 commitId, bool commitApproved) external { 
     Commit storage commit = commits[commitId];
     require(commit.commitTo == msg.sender, "You are not the recipient of this commit");
     require(commit.expiryTimestamp > block.timestamp, "Commit has expired");
     require(commit.commitApproved == false, "Commit has already been judged");
     require(bytes(commit.proofIpfsHash).length != 0, "Proof must be submitted before you can judge!");
-
+    
     commit.commitApproved = commitApproved;
     if (commitApproved) {
       // send the stake amount to the commitFrom
@@ -83,6 +72,7 @@ contract CommitManager {
     }
   }
 
+  // claim an expired commit
   function claimExpiredCommit(uint256 commitId) external {
     Commit storage commit = commits[commitId];
     require(commit.commitTo == msg.sender, "You are not the commitTo of this commit");
