@@ -6,37 +6,42 @@ import "hardhat/console.sol";
 
 contract CommitManager {
 
-  // variables
+  // global history of commits
   Commit[] commits;
+  // global counter for uniquely identifying commits
   uint256 totalCommits;
 
   // events
-  event NewCommit(address indexed from, address indexed to, uint256 expiryTimestamp, uint256 stakeAmount, string commitMessage);
-  event Claimed(address indexed from, uint256 amount);
+  event NewCommit(address indexed from, address indexed to, uint256 validThrough, uint256 stakeAmount, string commitMessage);
+  event ProofSubmitted(address indexed from, address indexed to, string ipfsUrl);
 
   // "Commit" struct
   struct Commit {
     uint256 id; // the totalCommits proxy (for now)
     address commitFrom;
     address commitTo;
-    uint256 expiryTimestamp;
-    uint256 stakeAmount; // currently only ETH supported
+    uint64 createdAt;
+    uint64 validThrough;
+    uint64 judgeDeadline; // validThrough + 24 hours
+    uint256 stakeAmount; // only ETH supported (for now)
     string message;
-    string proofIpfsHash;
-    bool commitJudged; // change all commitApproved instances
+    string ipfsHash;
+    bool commitJudged;
+    bool isApproved;
   }
+
   constructor() {
     totalCommits = 0;
     console.log("CommitManager contract deployed");
   }
 
-  // functions (create -> prove -> judge, claim)
+  // (1) create -> (2) prove -> (3) judge
 
   // create a commit
-  function createCommit(string memory _message, address commitTo, uint256 expiryTimestamp) external payable {
-    require(msg.sender != commitTo, "Cannot commit to yourself");
+  function createCommit(string memory _message, address commitTo, uint256 validThrough) external payable {
+    require(commitTo != msg.sender, "Cannot commit to yourself");
 
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, expiryTimestamp, msg.value, _message, "", false);
+    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp ,validThrough, validThrough + 24 hours, msg.value, _message, "", false);
     commits.push(newCommit);
     totalCommits += 1;
 
@@ -44,39 +49,34 @@ contract CommitManager {
   }
 
   // prove a commit
-  function proveCommit(uint256 commitId, string memory _proofIpfsHash) external {
+  function proveCommit(uint256 commitId, string memory _ipfsHash) external {
     Commit storage commit = commits[commitId];
-    require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
-    require(commit.commitApproved == false, "This commit has already been proved");
-    require(commit.expiryTimestamp > block.timestamp, "This commit has expired");
 
-    commit.proofIpfsHash = _proofIpfsHash;
+    require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
+    require(commit.commitJudged == false, "This commit has already been proved");
+    require(commit.validThrough > block.timestamp, "This commit has expired");
+
+    commit.ipfsHash = _ipfsHash;
   }
 
   // judge a commit
-  function judgeCommit(uint256 commitId, bool commitApproved) external { 
+  function judgeCommit(uint256 commitId, bool commitJudged, bool isApproved) external { 
     Commit storage commit = commits[commitId];
-    require(commit.commitTo == msg.sender, "You are not the recipient of this commit");
-    require(commit.expiryTimestamp > block.timestamp, "Commit has expired");
-    require(commit.commitApproved == false, "Commit has already been judged");
-    require(bytes(commit.proofIpfsHash).length != 0, "Proof must be submitted before you can judge");
+
+    require(commit.commitTo == msg.sender, "You are not the judge of this commit");
+    require(commit.judgeDeadline > block.timestamp, "The judge deadline has expired");
+    require(commit.commitJudged == false, "Commit has already been judged");
+    require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
     
-    commit.commitApproved = commitApproved;
-    if (commitApproved) {
-      // send the stake amount to the commitFrom
+    commit.commitJudged = commitJudged;
+    commit.isApproved = isApproved;
+
+    if (isApproved) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
-  }
-
-  // claim an expired commit
-  function claimExpiredCommit(uint256 commitId) external {
-    Commit storage commit = commits[commitId];
-    require(commit.commitTo == msg.sender, "You are not the commitTo of this commit");
-    require(commit.commitApproved == false, "Commit has already been judged");
-    require(commit.expiryTimestamp < block.timestamp, "Commit has not expired yet");
-
-    // send the stake amount to the commitTo
-    payable(commit.commitTo).transfer(commit.stakeAmount);
+    else {
+      payable(commit.commitTo).transfer(commit.stakeAmount);
+    }
   }
 
   // a Getter for the Commit array
@@ -88,4 +88,5 @@ contract CommitManager {
   function getTotalCommits() public view returns (uint256) {
     return totalCommits;
   }
+
 }
