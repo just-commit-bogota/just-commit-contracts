@@ -20,9 +20,9 @@ contract CommitManager {
     uint256 id; // the totalCommits proxy (for now)
     address commitFrom;
     address commitTo;
-    uint64 createdAt;
-    uint64 validThrough;
-    uint64 judgeDeadline; // validThrough + 24 hours
+    uint256 createdAt;
+    uint256 validThrough;
+    uint256 judgeDeadline; // validThrough + 24 hours
     uint256 stakeAmount; // only ETH supported (for now)
     string message;
     string ipfsHash;
@@ -41,12 +41,23 @@ contract CommitManager {
   function createCommit(string memory _message, address commitTo, uint256 validThrough) external payable {
     require(commitTo != msg.sender, "Cannot commit to yourself");
 
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp ,validThrough, validThrough + 24 hours, msg.value, _message, "", false);
+    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + 24 hours, msg.value, _message, "", false, false, false);
     commits.push(newCommit);
     totalCommits += 1;
 
     console.log("\n%s has commited with message: %s", msg.sender, _message);
   }
+
+  // update commit with txnHash
+  // function updateCommit(uint256 commitId, string memory _txnHash) external {
+  //   Commit storage commit = commits[commitId];
+
+  //   require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
+  //   require(commit.hasBeenUpdated == false, "This commit has already been updated");
+
+  //   commit.txnHash = _txnHash;
+  //   commit.hasBeenUpdated = true;
+  // }
 
   // prove a commit
   function proveCommit(uint256 commitId, string memory _ipfsHash) external {
@@ -60,7 +71,7 @@ contract CommitManager {
   }
 
   // judge a commit
-  function judgeCommit(uint256 commitId, bool commitJudged, bool isApproved) external { 
+  function judgeCommit(uint256 commitId, bool isApproved) external { 
     Commit storage commit = commits[commitId];
 
     require(commit.commitTo == msg.sender, "You are not the judge of this commit");
@@ -68,7 +79,7 @@ contract CommitManager {
     require(commit.commitJudged == false, "Commit has already been judged");
     require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
     
-    commit.commitJudged = commitJudged;
+    commit.commitJudged = true;
     commit.isApproved = isApproved;
 
     if (isApproved) {
