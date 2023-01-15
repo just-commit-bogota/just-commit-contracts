@@ -76,6 +76,9 @@ contract CommitManager {
     if (_isApproved) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
+    // IF DENIED -> 2 OPTIONS: 1. send money to judge 2. send money to contract
+    // 1. payable(commit.commitTo).transfer(commit.stakeAmount);
+    // 2. make function payable? 
     else {
       payable(commit.commitTo).transfer(commit.stakeAmount);
     }
