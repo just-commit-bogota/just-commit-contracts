@@ -26,6 +26,7 @@ contract CommitManager {
     uint256 stakeAmount; // only ETH supported (for now)
     string message;
     string ipfsHash;
+    bool commitProved;
     bool commitJudged;
     bool isApproved;
   }
@@ -48,30 +49,20 @@ contract CommitManager {
     console.log("\n%s has commited with message: %s", msg.sender, _message);
   }
 
-  // update commit with txnHash
-  // function updateCommit(uint256 commitId, string memory _txnHash) external {
-  //   Commit storage commit = commits[commitId];
-
-  //   require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
-  //   require(commit.hasBeenUpdated == false, "This commit has already been updated");
-
-  //   commit.txnHash = _txnHash;
-  //   commit.hasBeenUpdated = true;
-  // }
-
   // prove a commit
   function proveCommit(uint256 commitId, string memory _ipfsHash) external {
     Commit storage commit = commits[commitId];
 
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
-    require(commit.commitJudged == false, "This commit has already been proved");
+    require(commit.commitProved == false, "This commit has already been proved");
     require(commit.validThrough > block.timestamp, "This commit has expired");
 
+    commit.commitProved = true;
     commit.ipfsHash = _ipfsHash;
   }
 
   // judge a commit
-  function judgeCommit(uint256 commitId, bool isApproved) external { 
+  function judgeCommit(uint256 commitId, bool _isApproved) external { 
     Commit storage commit = commits[commitId];
 
     require(commit.commitTo == msg.sender, "You are not the judge of this commit");
@@ -80,9 +71,9 @@ contract CommitManager {
     require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
     
     commit.commitJudged = true;
-    commit.isApproved = isApproved;
+    commit.isApproved = _isApproved;
 
-    if (isApproved) {
+    if (_isApproved) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
     else {
