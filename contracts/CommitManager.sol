@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.7;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-contract CommitManager {
+contract CommitManagerContract is Ownable {
 
   // global history of commits
   Commit[] commits;
   // global counter for uniquely identifying commits
   uint256 totalCommits;
-
-  // events
-  event NewCommit(address indexed from, address indexed to, uint256 validThrough, uint256 stakeAmount, string commitMessage);
-  event ProofSubmitted(address indexed from, address indexed to, string ipfsUrl);
 
   // "Commit" struct
   struct Commit {
@@ -33,7 +30,7 @@ contract CommitManager {
 
   constructor() {
     totalCommits = 0;
-    console.log("CommitManager contract deployed");
+    console.log("CommitManagerContract contract deployed");
   }
 
   // (1) create -> (2) prove -> (3) judge
@@ -41,8 +38,10 @@ contract CommitManager {
   // create a commit
   function createCommit(string memory _message, address commitTo, uint256 validThrough) external payable {
     require(commitTo != msg.sender, "Cannot commit to yourself");
+    require(msg.value >= 0, "Stake amount must be positive");
+    require(validThrough > block.timestamp, "The commitment can't be for the past");
 
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + 24 hours, msg.value, _message, "", false, false, false);
+    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", false, false, false);
     commits.push(newCommit);
     totalCommits += 1;
 
@@ -62,7 +61,7 @@ contract CommitManager {
   }
 
   // judge a commit
-  function judgeCommit(uint256 commitId, bool _isApproved) external { 
+  function judgeTheCommit(uint256 commitId, bool _isApproved) external { 
     Commit storage commit = commits[commitId];
 
     require(commit.commitTo == msg.sender, "You are not the judge of this commit");
@@ -75,12 +74,6 @@ contract CommitManager {
 
     if (_isApproved) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
-    }
-    // IF DENIED -> 2 OPTIONS: 1. send money to judge 2. send money to contract
-    // 1. payable(commit.commitTo).transfer(commit.stakeAmount);
-    // 2. make function payable? 
-    else {
-      payable(commit.commitTo).transfer(commit.stakeAmount);
     }
   }
 
