@@ -23,6 +23,7 @@ contract CommitManagerContract is Ownable {
     uint256 stakeAmount; // only ETH supported (for now)
     string message;
     string ipfsHash;
+    string filename;
     bool commitProved;
     bool commitJudged;
     bool isApproved;
@@ -41,7 +42,7 @@ contract CommitManagerContract is Ownable {
     require(msg.value >= 0, "Stake amount must be positive");
     require(validThrough > block.timestamp, "The commitment can't be for the past");
 
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", false, false, false);
+    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", "", false, false, false);
     commits.push(newCommit);
     totalCommits += 1;
 
@@ -49,7 +50,7 @@ contract CommitManagerContract is Ownable {
   }
 
   // prove a commit
-  function proveCommit(uint256 commitId, string memory _ipfsHash) external {
+  function proveCommit(uint256 commitId, string memory _ipfsHash, string memory _filename) external {
     Commit storage commit = commits[commitId];
 
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
@@ -57,7 +58,9 @@ contract CommitManagerContract is Ownable {
     require(commit.validThrough > block.timestamp, "This commit has expired");
 
     commit.commitProved = true;
+
     commit.ipfsHash = _ipfsHash;
+    commit.filename = _filename;
   }
 
   // judge a commit
