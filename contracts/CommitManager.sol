@@ -33,8 +33,8 @@ contract CommitPortal is Ownable {
   // "NewCommit" event
   event NewCommit(
     uint256 id,
-    address commitFrom,
-    address commitTo,
+    address indexed commitFrom,
+    address indexed commitTo,
     uint256 createdAt,
     uint256 validThrough,
     uint256 judgeDeadline, 
@@ -47,9 +47,23 @@ contract CommitPortal is Ownable {
     bool isApproved
   );
 
+  // "NewProve" event
+  event NewProve(
+    uint256 commitId,
+    string ipfsHash,
+    string filename,
+    uint256 provedAt
+  );
+
+  // "NewJudge" event
+  event NewJudge(
+    uint256 commitId,
+    bool isApproved,
+    uint256 judgedAt
+  );
+
   constructor() {
     totalCommits = 0;
-    console.log("CommitPortal contract deployed");
   }
 
   // (1) create -> (2) prove -> (3) judge
@@ -65,7 +79,6 @@ contract CommitPortal is Ownable {
     totalCommits += 1;
 
     emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", "", false, false, false);
-    console.log("\n%s has commited with message: %s", msg.sender, _message);
   }
 
   // prove a commit
@@ -80,6 +93,8 @@ contract CommitPortal is Ownable {
 
     commit.ipfsHash = _ipfsHash;
     commit.filename = _filename;
+
+    emit NewProve(commitId, _ipfsHash, _filename, block.timestamp);
   }
 
   // judge a commit
@@ -97,6 +112,8 @@ contract CommitPortal is Ownable {
     if (_isApproved) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
+
+    emit NewJudge(commitId, _isApproved, block.timestamp);
   }
 
   // a Getter for the Commit array
