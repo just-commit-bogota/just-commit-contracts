@@ -5,12 +5,13 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
-contract CommitManagerContract is Ownable {
+contract CommitPortal is Ownable {
+
+  // global counter for uniquely identifying commits
+  uint256 totalCommits;
 
   // global history of commits
   Commit[] commits;
-  // global counter for uniquely identifying commits
-  uint256 totalCommits;
 
   // "Commit" struct
   struct Commit {
@@ -29,9 +30,26 @@ contract CommitManagerContract is Ownable {
     bool isApproved;
   }
 
+  // "NewCommit" event
+  event NewCommit(
+    uint256 id,
+    address commitFrom,
+    address commitTo,
+    uint256 createdAt,
+    uint256 validThrough,
+    uint256 judgeDeadline, 
+    uint256 stakeAmount,
+    string message,
+    string ipfsHash,
+    string filename,
+    bool commitProved,
+    bool commitJudged,
+    bool isApproved
+  );
+
   constructor() {
     totalCommits = 0;
-    console.log("CommitManagerContract contract deployed");
+    console.log("CommitPortal contract deployed");
   }
 
   // (1) create -> (2) prove -> (3) judge
@@ -46,6 +64,7 @@ contract CommitManagerContract is Ownable {
     commits.push(newCommit);
     totalCommits += 1;
 
+    emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", "", false, false, false);
     console.log("\n%s has commited with message: %s", msg.sender, _message);
   }
 
@@ -64,7 +83,7 @@ contract CommitManagerContract is Ownable {
   }
 
   // judge a commit
-  function judgeTheCommit(uint256 commitId, bool _isApproved) external { 
+  function judgeCommit(uint256 commitId, bool _isApproved) external { 
     Commit storage commit = commits[commitId];
 
     require(commit.commitTo == msg.sender, "You are not the judge of this commit");
