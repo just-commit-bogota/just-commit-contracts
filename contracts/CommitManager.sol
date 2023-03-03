@@ -29,6 +29,7 @@ contract CommitPortal is Ownable {
     bool commitJudged;
     bool isApproved;
     bool isChallenge;
+    uint challengeId;
   }
 
   // "NewCommit" event
@@ -46,7 +47,8 @@ contract CommitPortal is Ownable {
     bool commitProved,
     bool commitJudged,
     bool isApproved,
-    bool isChallenge
+    bool isChallenge,
+    uint challengeId
   );
 
   // "NewProve" event
@@ -91,18 +93,22 @@ contract CommitPortal is Ownable {
     require(!hasPendingCommits(), "You have at least one pending commitment");
 
     bool isChallenge;
+    uint challengeId;
+
     if (commitsToCreate > 1) {
       isChallenge = true;
+      challengeId = uint(keccak256(abi.encodePacked(block.timestamp, msg.sender)));
     } else {
       isChallenge = false;
+      challengeId = 0;
     }
 
     for (uint256 i = 0; i < commitsToCreate; i++) {
-      Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+      Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge, challengeId);
       commits.push(newCommit);
       totalCommits += 1;
 
-      emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+      emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge, challengeId);
     }
   }
 
