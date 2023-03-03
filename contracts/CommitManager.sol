@@ -98,11 +98,11 @@ contract CommitPortal is Ownable {
     }
 
     for (uint256 i = 0; i < commitsToCreate; i++) {
-      Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough + ((i)*86400), validThrough + ((i+1)*86400), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+      Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
       commits.push(newCommit);
       totalCommits += 1;
 
-      emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough + ((i)*86400), validThrough + ((i+1)*86400), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+      emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp * 1000, validThrough + ((i)*86400000), validThrough + ((i+1)*86400000), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
     }
   }
 
@@ -112,14 +112,14 @@ contract CommitPortal is Ownable {
 
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
     require(commit.commitProved == false, "This commit has already been proved");
-    require(commit.validThrough > block.timestamp, "This commit has expired");
+    require(commit.validThrough > block.timestamp * 1000, "This commit has expired");
 
     commit.commitProved = true;
 
     commit.ipfsHash = _ipfsHash;
     commit.filename = _filename;
 
-    emit NewProve(commitId, _ipfsHash, _filename, block.timestamp);
+    emit NewProve(commitId, _ipfsHash, _filename, block.timestamp * 1000);
   }
 
   // judge a commit
@@ -127,7 +127,7 @@ contract CommitPortal is Ownable {
     Commit storage commit = commits[commitId];
 
     require(commit.commitTo == msg.sender, "You are not the judge of this commit");
-    require(commit.judgeDeadline > block.timestamp, "The judge deadline has expired");
+    require(commit.judgeDeadline > block.timestamp * 1000, "The judge deadline has expired");
     require(commit.commitJudged == false, "Commit has already been judged");
     require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
     
@@ -139,7 +139,7 @@ contract CommitPortal is Ownable {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
 
-    emit NewJudge(commitId, _isApproved, block.timestamp);
+    emit NewJudge(commitId, _isApproved, block.timestamp * 1000);
   }
 
   // a Getter for the Commit array
