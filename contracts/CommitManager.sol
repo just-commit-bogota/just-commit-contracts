@@ -28,6 +28,7 @@ contract CommitPortal is Ownable {
     bool commitProved;
     bool commitJudged;
     bool isApproved;
+    bool isChallenge;
   }
 
   // "NewCommit" event
@@ -44,7 +45,8 @@ contract CommitPortal is Ownable {
     string filename,
     bool commitProved,
     bool commitJudged,
-    bool isApproved
+    bool isApproved,
+    bool isChallenge
   );
 
   // "NewProve" event
@@ -66,19 +68,42 @@ contract CommitPortal is Ownable {
     totalCommits = 0;
   }
 
-  // (1) create -> (2) prove -> (3) judge
+  // utils
+  function hasPendingCommits() public view returns (bool) {
+    for (uint i = 0; i < commits.length; i++) {
+      if (commits[i].commitFrom == msg.sender && 
+          !commits[i].commitProved &&
+          commits[i].validThrough > block.timestamp) {
+        return true;
+      }
+    }
+    return false;
+  }
 
-  // create a commit
-  function createCommit(string memory _message, address commitTo, uint256 validThrough) external payable {
+  // (1) CREATE -> (2) PROVE -> (3) JUDGE
+
+  function createCommit(string memory _message, address commitTo, uint256 validThrough, uint256 commitsToCreate) external payable {
     require(commitTo != msg.sender, "Cannot commit to yourself");
     require(msg.value >= 0, "Stake amount must be positive");
-    require(validThrough > block.timestamp, "The commitment can't be for the past");
+    require(validThrough > block.timestamp, "The commitment can't be in the past");
+    require(commitsToCreate >= 1, "You have to create at least 1 commitment");
+    require(commitsToCreate == 1 || commitsToCreate == 30 || commitsToCreate == 60, "You can only create 1, 30 or 60 commitments at a time");
+    require(!hasPendingCommits(), "You have at least one pending commitment");
 
-    Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", "", false, false, false);
-    commits.push(newCommit);
-    totalCommits += 1;
+    bool isChallenge;
+    if (commitsToCreate > 1) {
+      isChallenge = true;
+    } else {
+      isChallenge = false;
+    }
 
-    emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough, validThrough + (86400 * 1000), msg.value, _message, "", "", false, false, false);
+    for (uint256 i = 0; i < commitsToCreate; i++) {
+      Commit memory newCommit = Commit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough + ((i)*86400), validThrough + ((i+1)*86400), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+      commits.push(newCommit);
+      totalCommits += 1;
+
+      emit NewCommit(totalCommits, msg.sender, commitTo, block.timestamp, validThrough + ((i)*86400), validThrough + ((i+1)*86400), msg.value / commitsToCreate, _message, "", "", false, false, false, isChallenge);
+    }
   }
 
   // prove a commit
@@ -109,7 +134,8 @@ contract CommitPortal is Ownable {
     commit.commitJudged = true;
     commit.isApproved = _isApproved;
 
-    if (_isApproved) {
+    // contract doesn't handle payment logic for challenge commitments (for now)
+    if (_isApproved && !commit.isChallenge) {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
 
