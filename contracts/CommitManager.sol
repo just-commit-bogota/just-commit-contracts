@@ -54,8 +54,6 @@ contract CommitPortal is Ownable {
   // "NewProve" event
   event NewProve(
     uint256 commitId,
-    string ipfsHash,
-    string filename,
     uint256 provedAt
   );
 
@@ -103,7 +101,7 @@ contract CommitPortal is Ownable {
   }
 
   // (2) PROVE
-  function proveCommit(uint256 commitId, string memory _ipfsHash, string memory _filename) external {
+  function proveCommit(uint256 commitId) external {
     Commit storage commit = commits[commitId];
 
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
@@ -112,17 +110,14 @@ contract CommitPortal is Ownable {
 
     commit.commitProved = true;
 
-    commit.ipfsHash = _ipfsHash;
-    commit.filename = _filename;
-
-    emit NewProve(commitId, _ipfsHash, _filename, block.timestamp);
+    emit NewProve(commitId, block.timestamp);
   }
 
   // (3) JUDGE
   function judgeCommit(uint256 commitId, bool _isApproved) external { 
     Commit storage commit = commits[commitId];
 
-    // require(!Address.contains(msg.sender, commitTo) "You are not the judge of this commit");
+    // TODO: require(!Address.contains(msg.sender, commitTo) "You are not the judge of this commit");
     require(commit.judgeDeadline > block.timestamp, "The judge deadline has expired");
     require(commit.commitJudged == false, "Commit has already been judged");
     require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
