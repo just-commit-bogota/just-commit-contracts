@@ -24,7 +24,6 @@ contract CommitPortal is Ownable {
     uint256 judgeDeadline; // endsAt + 24 hours
     uint256 stakeAmount; // native token
     string message;
-    string ipfsHash;
     string filename;
     bool commitProved;
     bool commitJudged;
@@ -43,7 +42,6 @@ contract CommitPortal is Ownable {
     uint256 judgeDeadline, 
     uint256 stakeAmount,
     string message,
-    string ipfsHash,
     string filename,
     bool commitProved,
     bool commitJudged,
@@ -54,6 +52,7 @@ contract CommitPortal is Ownable {
   // "NewProve" event
   event NewProve(
     uint256 commitId,
+    string filename,
     uint256 provedAt
   );
 
@@ -92,7 +91,7 @@ contract CommitPortal is Ownable {
     // create
     Commit memory newCommit = Commit(
       totalCommits, msg.sender, commitTo, block.timestamp, startsAt, endsAt, endsAt + (86400 * 1000),
-      msg.value, _message, "", "", false, false, false, isSolo
+      msg.value, _message, "", false, false, false, isSolo
     );
 
     // update
@@ -101,7 +100,7 @@ contract CommitPortal is Ownable {
   }
 
   // (2) PROVE
-  function proveCommit(uint256 commitId) external {
+  function proveCommit(uint256 commitId, string memory _filename) external {
     Commit storage commit = commits[commitId];
 
     require(commit.commitFrom == msg.sender, "You are not the creator of this commit");
@@ -109,8 +108,9 @@ contract CommitPortal is Ownable {
     require(commit.endsAt > block.timestamp, "This commit has expired");
 
     commit.commitProved = true;
+    commit.filename = _filename;
 
-    emit NewProve(commitId, block.timestamp);
+    emit NewProve(commitId, _filename, block.timestamp);
   }
 
   // (3) JUDGE
@@ -120,7 +120,7 @@ contract CommitPortal is Ownable {
     // TODO: require(!Address.contains(msg.sender, commitTo) "You are not the judge of this commit");
     require(commit.judgeDeadline > block.timestamp, "The judge deadline has expired");
     require(commit.commitJudged == false, "Commit has already been judged");
-    require(bytes(commit.ipfsHash).length != 0, "Proof must be submitted before you can judge");
+    require(bytes(commit.filename).length != 0, "Proof must be submitted before you can judge");
     
     commit.commitJudged = true;
     commit.isApproved = _isApproved;
