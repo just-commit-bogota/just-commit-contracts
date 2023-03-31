@@ -65,6 +65,9 @@ contract CommitPortal is Ownable {
     uint256 judgedAt
   );
 
+  // Service Fee Address
+  address serviceFeeAddress = 0x1D105e24477BE50b485e1C86834B8D507592C8e3;
+
   constructor() {
     totalCommits = 0;
   }
@@ -97,6 +100,7 @@ contract CommitPortal is Ownable {
     require(msg.value >= 0, "Stake amount must be positive");
     require(endsAt <= startsAt + (168 * 3600 * 1000), "The commitment can't be longer than a week");
     require(endsAt > block.timestamp, "The commitment can't be in the past");
+    require(bytes(_message).length <= 26, "Say less");
     for (uint256 i = 0; i < commitJudge.length; i++) {
       require(commitJudge[i] != msg.sender, "Cannot attest yourself");
     }
@@ -142,7 +146,8 @@ contract CommitPortal is Ownable {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
     else {
-      payable(commit.commitTo).transfer(commit.stakeAmount);
+      payable(commit.commitTo).transfer((commit.stakeAmount * 8) / 10); // 80% 
+      payable(serviceFeeAddress).transfer((commit.stakeAmount * 2) / 10); // 20%
     }
 
     emit NewJudge(commitId, _isApproved, block.timestamp);
