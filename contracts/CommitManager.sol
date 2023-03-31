@@ -22,7 +22,7 @@ contract CommitPortal is Ownable {
     uint256 createdAt;
     uint256 startsAt;
     uint256 endsAt;
-    uint256 judgeDeadline; // endsAt + 24 hours
+    uint256 judgeDeadline; // endsAt + 24 hours initially
     uint256 stakeAmount; // native token
     string message;
     string filename;
@@ -126,6 +126,7 @@ contract CommitPortal is Ownable {
 
     commit.isCommitProved = true;
     commit.filename = _filename;
+    commit.judgeDeadline = block.timestamp + (86400 * 1000);
 
     emit NewProve(commitId, _filename, block.timestamp);
   }
