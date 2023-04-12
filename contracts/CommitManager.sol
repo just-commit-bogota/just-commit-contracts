@@ -63,9 +63,6 @@ contract CommitPortal is Ownable {
     uint256 judgedAt
   );
 
-  // Service Fee Address
-  address serviceFeeAddress = 0x1D105e24477BE50b485e1C86834B8D507592C8e3;
-
   constructor() {
     totalCommits = 0;
   }
@@ -145,8 +142,7 @@ contract CommitPortal is Ownable {
       payable(commit.commitFrom).transfer(commit.stakeAmount);
     }
     else {
-      payable(commit.commitTo).transfer((commit.stakeAmount * 8) / 10); // 80% 
-      payable(serviceFeeAddress).transfer((commit.stakeAmount * 2) / 10); // 20%
+      payable(commit.commitTo).transfer(commit.stakeAmount); 
     }
 
     emit NewJudge(commitId, _isApproved, block.timestamp * 1000);
