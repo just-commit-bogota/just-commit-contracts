@@ -1,6 +1,1 @@
-## JustCommit Contracts
-
-```
-npm install
-npx hardhat compile
-```
+## Just Commit Contract
