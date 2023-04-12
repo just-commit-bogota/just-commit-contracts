@@ -21,7 +21,7 @@ contract CommitPortal is Ownable {
     address[] commitJudge;
     uint256 createdAt;
     uint256 endsAt;
-    uint256 judgeDeadline; // endsAt + 24 hours initially
+    uint256 judgeDeadline; // endsAt + 24 hours
     uint256 stakeAmount; // native token
     string message;
     string filename;
@@ -91,8 +91,11 @@ contract CommitPortal is Ownable {
 
   // (1) CREATE
   function createCommit(string memory _message, address commitTo, address[] memory commitJudge, uint256 endsAt, bool isSolo) external payable {
+    console.log("endsAt: %s", endsAt);
+    console.log("block.timestamp: %s", block.timestamp * 1000);
+    
     require(msg.value >= 0, "Stake amount must be positive");
-    require(endsAt <= (block.timestamp * 1000) + (3600 * 168 * 1000), "The commitment can't be longer than a week");
+    require(endsAt <= (block.timestamp * 1000) + (7 * 24 * 60 * 60 * 1000), "The commitment can't be longer than a week");
     require(endsAt > block.timestamp * 1000, "The commitment can't be in the past");
     require(bytes(_message).length <= 26, "Say less");
 
@@ -102,7 +105,7 @@ contract CommitPortal is Ownable {
 
     // create
     Commit memory newCommit = Commit(
-      totalCommits, msg.sender, commitTo, commitJudge, block.timestamp * 1000, endsAt * 1000, (endsAt + (3600 * 24 * 1000)) * 1000,
+      totalCommits, msg.sender, commitTo, commitJudge, block.timestamp * 1000, endsAt, (endsAt + (1 * 24 * 60 * 60 * 1000)),
       msg.value, _message, "", false, false, false, isSolo
     );
 
@@ -121,7 +124,7 @@ contract CommitPortal is Ownable {
 
     commit.isCommitProved = true;
     commit.filename = _filename;
-    commit.judgeDeadline = block.timestamp * 1000 + (3600 * 24 * 1000);
+    commit.judgeDeadline = (block.timestamp * 1000) + (1 * 24 * 60 * 60 * 1000);
 
     emit NewProve(commitId, _filename, block.timestamp * 1000);
   }
