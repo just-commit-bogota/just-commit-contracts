@@ -18,17 +18,16 @@ contract CommitPortal is Ownable {
     uint256 id; // the totalCommits proxy (for now)
     address commitFrom;
     address commitTo;
-    address[] commitJudge;
+    address commitJudge;
     uint256 createdAt;
     uint256 endsAt;
     uint256 judgeDeadline; // endsAt + 24 hours
     uint256 stakeAmount; // native token
-    string message;
+    uint256 dailyAvgPhonePickups;
     string filename;
     bool isCommitProved;
     bool isCommitJudged;
     bool isApproved;
-    bool isSolo;
   }
 
   // "NewCommit" event
@@ -36,17 +35,16 @@ contract CommitPortal is Ownable {
     uint256 id,
     address indexed commitFrom,
     address indexed commitTo,
-    address[] indexed commitJudge,
+    address indexed commitJudge,
     uint256 createdAt,
     uint256 endsAt,
     uint256 judgeDeadline, 
     uint256 stakeAmount,
-    string message,
+    uint256 dailyAvgPhonePickups,
     string filename,
     bool isCommitProved,
     bool isCommitJudged,
-    bool isApproved,
-    bool isSolo
+    bool isApproved
   );
 
   // "NewProve" event
@@ -77,41 +75,69 @@ contract CommitPortal is Ownable {
     return totalCommits;
   }
 
-  function isAddressInArray(address[] memory array, address element) internal pure returns (bool) {
-    for (uint i = 0; i < array.length; i++) {
-        if (array[i] == element) {
-            return true;
-        }
-    }
-    return false;
-  }
-
-
   // (1) CREATE -> (2) PROVE -> (3) JUDGE
 
   // (1) CREATE
-  function createCommit(string memory _message, address commitTo, address[] memory commitJudge, uint256 endsAt, bool isSolo) external payable {
-    console.log("endsAt: %s", endsAt);
-    console.log("block.timestamp: %s", block.timestamp * 1000);
-    
-    require(msg.value >= 0, "Stake amount must be positive");
-    require(endsAt <= (block.timestamp * 1000) + (7 * 24 * 60 * 60 * 1000), "The commitment can't be longer than a week");
-    require(endsAt > block.timestamp * 1000, "The commitment can't be in the past");
-    require(bytes(_message).length <= 26, "Say less");
+  function createCommit(address commitTo, address commitJudge, uint256 dailyAvgPhonePickupsLastWeek) external payable {
+    require(commitTo != msg.sender, "Cannot send to yourself");
+    require(commitJudge != msg.sender, "Cannot attest yourself");
 
-    for (uint256 i = 0; i < commitJudge.length; i++) {
-      require(commitJudge[i] != msg.sender, "Cannot attest yourself");
+    uint256[] memory multipliers = new uint256[](4);
+    multipliers[0] = 1; // 0.1
+    multipliers[1] = 2; // 0.2
+    multipliers[2] = 2; // 0.2
+    multipliers[3] = 4; // 0.4
+
+    uint256 stakeAmount = msg.value;
+
+    for (uint256 i = 0; i < 4; i++) {
+      // Calculate endsAt and judgeDeadline for each commit
+      uint256 endsAt = (block.timestamp + (i + 1) * 1 weeks) * 1000;
+      uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
+      uint256 commitStake = stakeAmount * multipliers[i] / 10;
+
+      // the daily avg phone pickpus goal per week
+      uint256 dailyAvgPhonePickupsPerWeek = dailyAvgPhonePickupsLastWeek * multipliers[i];
+
+      // create
+      Commit memory newCommit = Commit(
+        totalCommits,
+        msg.sender,
+        commitTo,
+        commitJudge,
+        block.timestamp * 1000,
+        endsAt,
+        judgeDeadline,
+        commitStake,
+        dailyAvgPhonePickupsPerWeek,
+        "",
+        false,
+        false,
+        false
+      );
+
+      // update
+      commits.push(newCommit);
+      totalCommits += 1;
+
+      // emit
+      emit NewCommit(
+        totalCommits,
+        msg.sender,
+        commitTo,
+        commitJudge,
+        block.timestamp * 1000,
+        endsAt,
+        judgeDeadline,
+        commitStake,
+        dailyAvgPhonePickupsPerWeek,
+        "",
+        false,
+        false,
+        false
+      );
+
     }
-
-    // create
-    Commit memory newCommit = Commit(
-      totalCommits, msg.sender, commitTo, commitJudge, block.timestamp * 1000, endsAt, (endsAt + (1 * 24 * 60 * 60 * 1000)),
-      msg.value, _message, "", false, false, false, isSolo
-    );
-
-    // update
-    commits.push(newCommit);
-    totalCommits += 1;
   }
 
   // (2) PROVE
@@ -133,7 +159,7 @@ contract CommitPortal is Ownable {
   function judgeCommit(uint256 commitId, bool _isApproved) external { 
     Commit storage commit = commits[commitId];
 
-    require(isAddressInArray(commit.commitJudge, msg.sender), "You are not the judge of this commit");
+    require(commit.commitJudge == msg.sender, "You are not the judge of this commit");
     require(commit.judgeDeadline > block.timestamp * 1000, "The judge deadline has expired");
     require(commit.isCommitJudged == false, "Commit has already been judged");
     require(bytes(commit.filename).length != 0, "Proof must be submitted before you can judge");
