@@ -10,6 +10,8 @@ contract CommitPortal is Ownable {
   // global counter for uniquely identifying commits
   uint256 totalCommits;
 
+  uint256 private constant SCALING_FACTOR = 1000;
+
   // global history of commits
   Commit[] commits;
 
@@ -23,7 +25,6 @@ contract CommitPortal is Ownable {
     uint256 endsAt;
     uint256 judgeDeadline; // endsAt + 24 hours
     uint256 stakeAmount; // native token
-    uint256 dailyAvgPhonePickups;
     string filename;
     bool isCommitProved;
     bool isCommitJudged;
@@ -40,7 +41,6 @@ contract CommitPortal is Ownable {
     uint256 endsAt,
     uint256 judgeDeadline, 
     uint256 stakeAmount,
-    uint256 dailyAvgPhonePickups,
     string filename,
     bool isCommitProved,
     bool isCommitJudged,
@@ -78,15 +78,15 @@ contract CommitPortal is Ownable {
   // (1) CREATE -> (2) PROVE -> (3) JUDGE
 
   // (1) CREATE
-  function createCommit(address commitTo, address commitJudge, uint256 dailyAvgPhonePickupsLastWeek) external payable {
+  function createCommit(address commitTo, address commitJudge) external payable {
     require(commitTo != msg.sender, "Cannot send to yourself");
     require(commitJudge != msg.sender, "Cannot attest yourself");
 
     uint256[] memory multipliers = new uint256[](4);
-    multipliers[0] = 1; // 0.1
-    multipliers[1] = 2; // 0.2
-    multipliers[2] = 2; // 0.2
-    multipliers[3] = 4; // 0.4
+    multipliers[0] = 1 * SCALING_FACTOR / 10; // 0.1
+    multipliers[1] = 2 * SCALING_FACTOR / 10; // 0.2
+    multipliers[2] = 2 * SCALING_FACTOR / 10; // 0.2
+    multipliers[3] = 4 * SCALING_FACTOR / 10; // 0.4
 
     uint256 stakeAmount = msg.value;
 
@@ -94,10 +94,7 @@ contract CommitPortal is Ownable {
       // Calculate endsAt and judgeDeadline for each commit
       uint256 endsAt = (block.timestamp + (i + 1) * 1 weeks) * 1000;
       uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
-      uint256 commitStake = stakeAmount * multipliers[i] / 10;
-
-      // the daily avg phone pickpus goal per week
-      uint256 dailyAvgPhonePickupsPerWeek = dailyAvgPhonePickupsLastWeek * multipliers[i];
+      uint256 commitStake = stakeAmount * multipliers[i] / SCALING_FACTOR;
 
       // create
       Commit memory newCommit = Commit(
@@ -109,7 +106,6 @@ contract CommitPortal is Ownable {
         endsAt,
         judgeDeadline,
         commitStake,
-        dailyAvgPhonePickupsPerWeek,
         "",
         false,
         false,
@@ -130,7 +126,6 @@ contract CommitPortal is Ownable {
         endsAt,
         judgeDeadline,
         commitStake,
-        dailyAvgPhonePickupsPerWeek,
         "",
         false,
         false,
