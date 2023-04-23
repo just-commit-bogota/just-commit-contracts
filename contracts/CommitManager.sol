@@ -131,8 +131,11 @@ contract CommitPortal is Ownable {
         false,
         false
       );
-
     }
+
+    // pay
+    payable(msg.sender).transfer(stakeAmount * 1 / 100); // 1% of stakeAmount
+    payable(commitTo).transfer(stakeAmount * 9 / 100); // 9% of stakeAmount
   }
 
   // (2) PROVE
