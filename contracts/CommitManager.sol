@@ -24,6 +24,7 @@ contract CommitPortal is Ownable {
     uint256 createdAt;
     uint256 endsAt;
     uint256 judgeDeadline; // endsAt + 24 hours
+    uint256 phonePickups;
     uint256 stakeAmount; // native token
     string filename;
     bool isCommitProved;
@@ -39,7 +40,8 @@ contract CommitPortal is Ownable {
     address indexed commitJudge,
     uint256 createdAt,
     uint256 endsAt,
-    uint256 judgeDeadline, 
+    uint256 judgeDeadline,
+    uint256 phonePickups,
     uint256 stakeAmount,
     string filename,
     bool isCommitProved,
@@ -78,9 +80,10 @@ contract CommitPortal is Ownable {
   // (1) CREATE -> (2) PROVE -> (3) JUDGE
 
   // (1) CREATE
-  function createCommit(address commitTo, address commitJudge) external payable {
+   function createCommit(address commitTo, address commitJudge, uint256 phonePickups) external payable {
     require(commitTo != msg.sender, "Cannot send to yourself");
     require(commitJudge != msg.sender, "Cannot attest yourself");
+    require(msg.value > 0, "Commit amount must be positive");
 
     uint256[] memory multipliers = new uint256[](4);
     multipliers[0] = 1 * SCALING_FACTOR / 10; // 0.1
@@ -89,12 +92,16 @@ contract CommitPortal is Ownable {
     multipliers[3] = 4 * SCALING_FACTOR / 10; // 0.4
 
     uint256 stakeAmount = msg.value;
+    uint256 currentPhonePickups = phonePickups;
 
     for (uint256 i = 0; i < 4; i++) {
       // Calculate endsAt and judgeDeadline for each commit
       uint256 endsAt = (block.timestamp + (i + 1) * 1 weeks) * 1000;
       uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
       uint256 commitStake = stakeAmount * multipliers[i] / SCALING_FACTOR;
+
+      // Modify phonePickups for each commit using the multipliers array
+      currentPhonePickups = currentPhonePickups * (SCALING_FACTOR - multipliers[i]) / SCALING_FACTOR;
 
       // create
       Commit memory newCommit = Commit(
@@ -105,6 +112,7 @@ contract CommitPortal is Ownable {
         block.timestamp * 1000,
         endsAt,
         judgeDeadline,
+        currentPhonePickups,
         commitStake,
         "",
         false,
@@ -125,6 +133,7 @@ contract CommitPortal is Ownable {
         block.timestamp * 1000,
         endsAt,
         judgeDeadline,
+        currentPhonePickups,
         commitStake,
         "",
         false,
