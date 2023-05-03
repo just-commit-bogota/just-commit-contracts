@@ -85,11 +85,7 @@ contract CommitPortal is Ownable {
     require(commitJudge != msg.sender, "Cannot attest yourself");
     require(msg.value > 0, "Commit amount must be positive");
 
-    uint256[] memory multipliers = new uint256[](4);
-    multipliers[0] = 1 * SCALING_FACTOR / 10; // 0.1
-    multipliers[1] = 2 * SCALING_FACTOR / 10; // 0.2
-    multipliers[2] = 2 * SCALING_FACTOR / 10; // 0.2
-    multipliers[3] = 4 * SCALING_FACTOR / 10; // 0.4
+    uint256 constantMultiplier = 25 * SCALING_FACTOR / 10; // 25% split
 
     uint256 stakeAmount = msg.value;
     uint256 currentPhonePickups = phonePickups;
@@ -98,10 +94,10 @@ contract CommitPortal is Ownable {
       // Calculate endsAt and judgeDeadline for each commit
       uint256 endsAt = (block.timestamp + (i + 1) * 1 weeks) * 1000;
       uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
-      uint256 commitStake = stakeAmount * multipliers[i] / SCALING_FACTOR;
+      uint256 commitStake = stakeAmount * constantMultiplier / SCALING_FACTOR;
 
       // Modify phonePickups for each commit using the multipliers array
-      currentPhonePickups = currentPhonePickups * (SCALING_FACTOR - multipliers[i]) / SCALING_FACTOR;
+      currentPhonePickups = currentPhonePickups * (SCALING_FACTOR - constantMultiplier) / SCALING_FACTOR;
 
       // create
       Commit memory newCommit = Commit(
@@ -142,9 +138,6 @@ contract CommitPortal is Ownable {
       );
     }
 
-    // pay
-    payable(msg.sender).transfer(stakeAmount * 1 / 100); // 1% of stakeAmount
-    payable(commitTo).transfer(stakeAmount * 9 / 100); // 9% of stakeAmount
   }
 
   // (2) PROVE
