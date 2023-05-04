@@ -85,7 +85,7 @@ contract CommitPortal is Ownable {
     require(commitJudge != msg.sender, "Cannot attest yourself");
     require(msg.value > 0, "Commit amount must be positive");
 
-    uint256 constantMultiplier = 25 * SCALING_FACTOR / 10; // 25% split
+    uint256 constantMultiplier = 25 * SCALING_FACTOR / 100; // 25% split/week
 
     uint256 stakeAmount = msg.value;
     uint256 currentPhonePickups = phonePickups;
