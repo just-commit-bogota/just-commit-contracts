@@ -95,6 +95,10 @@ contract CommitPortal is Ownable {
       return daysUntilNextMonday * 86400 + additionalSeconds;
   }
 
+  function withdraw() external onlyOwner {
+      uint balance = address(this).balance;
+      payable(msg.sender).transfer(balance);
+    }
 
   // (1) CREATE -> (2) PROVE -> (3) JUDGE
 
