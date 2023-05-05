@@ -24,7 +24,7 @@ contract CommitPortal is Ownable {
     uint256 createdAt;
     uint256 endsAt;
     uint256 judgeDeadline; // endsAt + 24 hours
-    uint256 phonePickups;
+    uint256 screenTime;
     uint256 stakeAmount; // native token
     string filename;
     bool isCommitProved;
@@ -41,7 +41,7 @@ contract CommitPortal is Ownable {
     uint256 createdAt,
     uint256 endsAt,
     uint256 judgeDeadline,
-    uint256 phonePickups,
+    uint256 screenTime,
     uint256 stakeAmount,
     string filename,
     bool isCommitProved,
@@ -77,69 +77,94 @@ contract CommitPortal is Ownable {
     return totalCommits;
   }
 
-  // (1) CREATE -> (2) PROVE -> (3) JUDGE
+  function getDifferenceToNextMonday(uint256 timestamp) public pure returns (uint256) {
+      uint256 dayOfWeek = (timestamp / 86400 + 4) % 7;
+      uint256 daysUntilNextMonday = (7 - dayOfWeek) % 7;
 
-  // (1) CREATE
-   function createCommit(address commitTo, address commitJudge, uint256 phonePickups) external payable {
-    require(commitTo != msg.sender, "Cannot send to yourself");
-    require(commitJudge != msg.sender, "Cannot attest yourself");
-    require(msg.value > 0, "Commit amount must be positive");
+      uint256 secondsUntilEndOfDay = 86400 - (timestamp % 86400);
+      uint256 secondsUntil1159PM = (23 * 3600) + (59 * 60) + 59;
 
-    uint256 constantMultiplier = 25 * SCALING_FACTOR / 100; // 25% split/week
+      uint256 additionalSeconds = 0;
+      if (secondsUntilEndOfDay < secondsUntil1159PM) {
+          additionalSeconds = secondsUntil1159PM - secondsUntilEndOfDay;
+      } else {
+          // The following line is updated to fix the issue
+          additionalSeconds = secondsUntil1159PM;
+      }
 
-    uint256 stakeAmount = msg.value;
-    uint256 currentPhonePickups = phonePickups;
-
-    for (uint256 i = 0; i < 4; i++) {
-      // Calculate endsAt and judgeDeadline for each commit
-      uint256 endsAt = (block.timestamp + (i + 1) * 1 weeks) * 1000;
-      uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
-      uint256 commitStake = stakeAmount * constantMultiplier / SCALING_FACTOR;
-
-      // Modify phonePickups for each commit using the multipliers array
-      currentPhonePickups = currentPhonePickups * (SCALING_FACTOR - constantMultiplier) / SCALING_FACTOR;
-
-      // create
-      Commit memory newCommit = Commit(
-        totalCommits,
-        msg.sender,
-        commitTo,
-        commitJudge,
-        block.timestamp * 1000,
-        endsAt,
-        judgeDeadline,
-        currentPhonePickups,
-        commitStake,
-        "",
-        false,
-        false,
-        false
-      );
-
-      // update
-      commits.push(newCommit);
-      totalCommits += 1;
-
-      // emit
-      emit NewCommit(
-        totalCommits,
-        msg.sender,
-        commitTo,
-        commitJudge,
-        block.timestamp * 1000,
-        endsAt,
-        judgeDeadline,
-        currentPhonePickups,
-        commitStake,
-        "",
-        false,
-        false,
-        false
-      );
-    }
-
+      return daysUntilNextMonday * 86400 + additionalSeconds;
   }
 
+
+  // (1) CREATE -> (2) PROVE -> (3) JUDGE
+
+   // (1) CREATE
+  function createCommit(address commitTo, address commitJudge, uint256 screenTime) external payable {
+      require(commitTo != msg.sender, "Cannot send to yourself");
+      require(commitJudge != msg.sender, "Cannot attest yourself");
+      require(msg.value > 0, "Commit amount must be positive");
+
+      uint256 constantMultiplier = 25 * SCALING_FACTOR / 100; // 25% split per week
+
+      uint256 stakeAmount = msg.value;
+      uint256 currentScreenTime = screenTime;
+
+      uint256 firstCommitEndsAt = block.timestamp + getDifferenceToNextMonday(block.timestamp);
+
+      firstCommitEndsAt -= (firstCommitEndsAt % 86400); // Remove the time part (hours, minutes, seconds) from the timestamp
+      firstCommitEndsAt += 1 weeks; // Add 1 week to the timestamp
+      firstCommitEndsAt += 1 days; // Add 1 day to the timestamp
+      firstCommitEndsAt += (23 * 3600) + (59 * 60) + 59; // Add 11:59:59 PM UTC to the timestamp
+
+      for (uint256 i = 0; i < 4; i++) {
+          // Calculate endsAt and judgeDeadline for each commit
+          uint256 endsAt = (firstCommitEndsAt + i * 1 weeks) * 1000;
+          uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
+          uint256 commitStake = stakeAmount * constantMultiplier / SCALING_FACTOR;
+
+          // Modify screenTime for each commit using the multipliers array
+          currentScreenTime = currentScreenTime * (SCALING_FACTOR - constantMultiplier) / SCALING_FACTOR;
+
+          // create
+          Commit memory newCommit = Commit(
+              totalCommits,
+              msg.sender,
+              commitTo,
+              commitJudge,
+              block.timestamp * 1000,
+              endsAt,
+              judgeDeadline,
+              currentScreenTime,
+              commitStake,
+              "",
+              false,
+              false,
+              false
+          );
+
+          // update
+          commits.push(newCommit);
+          totalCommits += 1;
+
+          // emit
+          emit NewCommit(
+              totalCommits,
+              msg.sender,
+              commitTo,
+              commitJudge,
+              block.timestamp * 1000,
+              endsAt,
+              judgeDeadline,
+              currentScreenTime,
+              commitStake,
+              "",
+              false,
+              false,
+              false
+          );
+      }
+  }
+  
   // (2) PROVE
   function proveCommit(uint256 commitId, string memory _filename) external {
     Commit storage commit = commits[commitId];
