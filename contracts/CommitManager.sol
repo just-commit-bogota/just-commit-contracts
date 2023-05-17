@@ -10,8 +10,6 @@ contract CommitPortal is Ownable {
   // global counter for uniquely identifying commits
   uint256 totalCommits;
 
-  uint256 private constant SCALING_FACTOR = 1000;
-
   // global history of commits
   Commit[] commits;
 
@@ -24,7 +22,9 @@ contract CommitPortal is Ownable {
     uint256 createdAt;
     uint256 endsAt;
     uint256 judgeDeadline; // endsAt + 24 hours
-    uint256 screenTime;
+    uint256 appPickups;
+    uint256 pickupGoal;
+    string appName;
     uint256 stakeAmount; // native token
     string filename;
     bool isCommitProved;
@@ -41,7 +41,9 @@ contract CommitPortal is Ownable {
     uint256 createdAt,
     uint256 endsAt,
     uint256 judgeDeadline,
-    uint256 screenTime,
+    uint256 appPickups,
+    uint256 pickupGoal,
+    string appName,
     uint256 stakeAmount,
     string filename,
     bool isCommitProved,
@@ -77,24 +79,7 @@ contract CommitPortal is Ownable {
     return totalCommits;
   }
 
-  function getDifferenceToNextMonday(uint256 timestamp) public pure returns (uint256) {
-      uint256 dayOfWeek = (timestamp / 86400 + 4) % 7;
-      uint256 daysUntilNextMonday = (7 - dayOfWeek) % 7;
-
-      uint256 secondsUntilEndOfDay = 86400 - (timestamp % 86400);
-      uint256 secondsUntil1159PM = (23 * 3600) + (59 * 60) + 59;
-
-      uint256 additionalSeconds = 0;
-      if (secondsUntilEndOfDay < secondsUntil1159PM) {
-          additionalSeconds = secondsUntil1159PM - secondsUntilEndOfDay;
-      } else {
-          // The following line is updated to fix the issue
-          additionalSeconds = secondsUntil1159PM;
-      }
-
-      return daysUntilNextMonday * 86400 + additionalSeconds;
-  }
-
+  // for contract Owner to withdraw
   function withdraw() external onlyOwner {
       uint balance = address(this).balance;
       payable(msg.sender).transfer(balance);
@@ -103,70 +88,58 @@ contract CommitPortal is Ownable {
   // (1) CREATE -> (2) PROVE -> (3) JUDGE
 
    // (1) CREATE
-  function createCommit(address commitTo, address commitJudge, uint256 screenTime) external payable {
+  function createCommit(address commitTo, address commitJudge, uint256 appPickups, uint256 pickupGoal, string memory appName) external payable {
       require(commitTo != msg.sender, "Cannot send to yourself");
       require(commitJudge != msg.sender, "Cannot attest yourself");
-      require(msg.value > 0, "Commit amount must be positive");
-
-      uint256 constantMultiplier = 25 * SCALING_FACTOR / 100; // 25% split per week
+      require(msg.value >= 0, "Commit amount must be positive");
 
       uint256 stakeAmount = msg.value;
-      uint256 currentScreenTime = screenTime;
+      
+      // Calculate endsAt and judgeDeadline for the commitment
+      uint256 endsAt = (block.timestamp + 30 days) * 1000;
+      uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
 
-      uint256 firstCommitEndsAt = block.timestamp + getDifferenceToNextMonday(block.timestamp);
+      // create
+      Commit memory newCommit = Commit(
+        totalCommits,
+        msg.sender,
+        commitTo,
+        commitJudge,
+        block.timestamp * 1000,
+        endsAt,
+        judgeDeadline,
+        appPickups,
+        pickupGoal,
+        appName,
+        stakeAmount,
+        "",
+        false,
+        false,
+        false
+      );
 
-      firstCommitEndsAt -= (firstCommitEndsAt % 86400); // Remove the time part (hours, minutes, seconds) from the timestamp
-      firstCommitEndsAt += 1 weeks; // Add 1 week to the timestamp
-      firstCommitEndsAt += 1 days; // Add 1 day to the timestamp
-      firstCommitEndsAt += (23 * 3600) + (59 * 60) + 59; // Add 11:59:59 PM UTC to the timestamp
+      // update
+      commits.push(newCommit);
+      totalCommits += 1;
 
-      for (uint256 i = 0; i < 4; i++) {
-          // Calculate endsAt and judgeDeadline for each commit
-          uint256 endsAt = (firstCommitEndsAt + i * 1 weeks) * 1000;
-          uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
-          uint256 commitStake = stakeAmount * constantMultiplier / SCALING_FACTOR;
-
-          // Modify screenTime for each commit using the multipliers array
-          currentScreenTime = currentScreenTime * (SCALING_FACTOR - constantMultiplier) / SCALING_FACTOR;
-
-          // create
-          Commit memory newCommit = Commit(
-              totalCommits,
-              msg.sender,
-              commitTo,
-              commitJudge,
-              block.timestamp * 1000,
-              endsAt,
-              judgeDeadline,
-              currentScreenTime,
-              commitStake,
-              "",
-              false,
-              false,
-              false
-          );
-
-          // update
-          commits.push(newCommit);
-          totalCommits += 1;
-
-          // emit
-          emit NewCommit(
-              totalCommits,
-              msg.sender,
-              commitTo,
-              commitJudge,
-              block.timestamp * 1000,
-              endsAt,
-              judgeDeadline,
-              currentScreenTime,
-              commitStake,
-              "",
-              false,
-              false,
-              false
-          );
-      }
+      // emit
+      emit NewCommit(
+        totalCommits,
+        msg.sender,
+        commitTo,
+        commitJudge,
+        block.timestamp * 1000,
+        endsAt,
+        judgeDeadline,
+        appPickups,
+        pickupGoal,
+        appName,
+        stakeAmount,
+        "",
+        false,
+        false,
+        false
+      );
   }
   
   // (2) PROVE
