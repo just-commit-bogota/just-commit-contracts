@@ -96,7 +96,7 @@ contract CommitPortal is Ownable {
       uint256 stakeAmount = msg.value;
       
       // Calculate endsAt and judgeDeadline for the commitment
-      uint256 endsAt = (block.timestamp + 30 days) * 1000;
+      uint256 endsAt = (block.timestamp + 28 days) * 1000;
       uint256 judgeDeadline = (endsAt + 24 hours) * 1000;
 
       // create
